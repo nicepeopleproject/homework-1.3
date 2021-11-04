@@ -1,4 +1,4 @@
-package test.regionRepositoryTests;
+package regionRepositoryTests;
 
 import model.Region;
 import repository.JSONRegionRepositoryImpl;

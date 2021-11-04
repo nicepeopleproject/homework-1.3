@@ -1,23 +1,26 @@
 package repository;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import model.Region;
 
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class JSONRegionRepositoryImpl implements RegionRepository {
 
     private final String repositoryFileName = "region.json";
+    private final Type REGION_LIST_TYPE = new TypeToken<List<Region>>() {
+    }.getType();
 
     // хотел хранить все регионы в List<Region> чтобы каждый раз не было необходимости вызывать метод getAll()
     { // Этот код можно убрать и считать требованием иметь файлы репозиториев
@@ -32,12 +35,10 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
 
     @Override
     public Region save(Region region) { // create
-        region.setId(this.getCurrentMaxID() + 1);
-        try {
-            Files.write(Paths.get(this.repositoryFileName), region.toString().getBytes(), StandardOpenOption.APPEND);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        List<Region> regions = getAll();
+        region.setId(this.getCurrentMaxID(regions) + 1);
+        regions.add(region);
+        saveAll(regions);
         return region;
     }
 
@@ -71,38 +72,14 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
 
     @Override
     public List<Region> getAll() { // read
-        FileInputStream fIn;
-        FileChannel fChan;
-        ByteBuffer mBuf;
-        int count;
-        List<Region> regions = null;
-        try {
-            StringBuffer region = new StringBuffer();
-            fIn = new FileInputStream(this.repositoryFileName);
-            fChan = fIn.getChannel();
-            mBuf = ByteBuffer.allocate(128);
-            do {
-                count = fChan.read(mBuf);
-                if (count != -1) {
-                    if (regions == null) {
-                        regions = new ArrayList<>();
-                    }
-                    for (int i = 0; i < count; i++) {
-                        region.append((char) mBuf.get(i));
-                        if ((char) mBuf.get(i) == '}') {
-                            regions.add(new Gson().fromJson(region.toString(), Region.class));
-                            region = new StringBuffer();
-                        }
-                    }
-                }
-                mBuf.rewind();
-            } while (count != -1);
-        } catch (IOException io) {
-
-        } finally {
-
+        List<Region> regions;
+        try (JsonReader reader = new JsonReader(new FileReader(repositoryFileName))) {
+            regions = new Gson().fromJson(reader, REGION_LIST_TYPE);
+            return regions;
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return regions;
+        return null;
     }
 
     @Override
@@ -132,18 +109,18 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
         if (regions == null) {
             return;
         }
-        try {
-            Files.write(Paths.get(this.repositoryFileName), regions.stream().map(Region::toString).collect(Collectors.joining()).getBytes());
+        try (BufferedWriter out = new BufferedWriter(new FileWriter(repositoryFileName), 32768)) {
+            out.write(new Gson().toJson(regions, REGION_LIST_TYPE));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private long getCurrentMaxID() {
-        if (getAll() == null) {
+    private long getCurrentMaxID(List<Region> regions) {
+        if ((regions == null) || (regions.size() == 0)) {
             return 0L;
         } else {
-            Optional<Long> id = getAll().stream().map(Region::getId).max(Long::compareTo);
+            Optional<Long> id = regions.stream().map(Region::getId).max(Long::compareTo);
             if (id.isPresent()) {
                 return id.get();
             } else {
@@ -151,4 +128,5 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
             }
         }
     }
+
 }
