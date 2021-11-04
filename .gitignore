@@ -1,3 +1,5 @@
-target/
-.idea/
-gitignoretest/
+/target
+/.idea
+/Smalltest1
+
+
