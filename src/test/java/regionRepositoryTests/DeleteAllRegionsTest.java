@@ -7,7 +7,7 @@ import repository.RegionRepository;
 public class DeleteAllRegionsTest {
     public static void main(String[] args) {
         RegionRepository regionRepository = new JSONRegionRepositoryImpl();
-        for (Region region : regionRepository.getAll()) {
+        for (Region region : regionRepository.getAllRegions()) {
             regionRepository.deleteByID(region.getId());
         }
     }

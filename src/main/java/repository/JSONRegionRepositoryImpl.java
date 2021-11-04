@@ -3,13 +3,10 @@ package repository;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 import model.Region;
 
 import java.io.*;
 import java.lang.reflect.Type;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -18,7 +15,7 @@ import java.util.Optional;
 
 public class JSONRegionRepositoryImpl implements RegionRepository {
 
-    private final String repositoryFileName = "region.json";
+    private final String repositoryFileName = "src" + File.separator + "main" + File.separator + "resources" + File.separator + "region.json";
     private final Type REGION_LIST_TYPE = new TypeToken<List<Region>>() {
     }.getType();
 
@@ -35,10 +32,10 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
 
     @Override
     public Region save(Region region) { // create
-        List<Region> regions = getAll();
-        region.setId(this.getCurrentMaxID(regions) + 1);
+        List<Region> regions = getAllRegionsInternal();
+        region.setId(this.generateNextId(regions));
         regions.add(region);
-        saveAll(regions);
+        writeRegionsIntoFile(regions);
         return region;
     }
 
@@ -47,31 +44,26 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
         if (region.getId() == null) {
             throw new RuntimeException("Cannot update region if id is unset.");
         } else {
-            List<Region> regions = getAll();
-            Region currentRegion = getById(region.getId(), regions);
-            if (currentRegion != null) {
-                regions = deleteFromListByID(regions, currentRegion.getId());
-                regions.add(region);
-                saveAll(regions);
-            } else {
-                throw new RuntimeException("Cannot find region with such: " + region.getId() + " id.");
-            }
+            getAllRegionsInternal().forEach(r -> {
+                if (r.getId().equals(region.getId())) r.setName(region.getName());
+            });
             return region;
         }
     }
 
     @Override
     public Region getById(Long id) {
-        return getById(id, getAll());
-    }
-
-    private Region getById(Long id, List<Region> regions) {
-        Optional<Region> regionOptional = regions.stream().filter(region -> region.getId().equals(id)).findFirst();
-        return regionOptional.orElse(null);
+        return getAllRegionsInternal().stream()
+                .filter(region -> region.getId().equals(id))
+                .findFirst().orElse(null);
     }
 
     @Override
-    public List<Region> getAll() { // read
+    public List<Region> getAllRegions() { // read
+        return getAllRegionsInternal();
+    }
+
+    private List<Region> getAllRegionsInternal() {
         List<Region> regions;
         try (JsonReader reader = new JsonReader(new FileReader(repositoryFileName))) {
             regions = new Gson().fromJson(reader, REGION_LIST_TYPE);
@@ -79,34 +71,21 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public void deleteByID(Long id) { // delete
-//        saveAll(getAll().stream().filter(region -> region.getId() != id).collect(Collectors.toList()));
-        List<Region> regions = getAll();
-        if (id != null) {
-            if (getById(id, regions) == null) {
-                throw new RuntimeException("Region with such id doesn't exist.");
-            } else {
-                saveAll(deleteFromListByID(regions, id));
-            }
-        } else {
-            throw new RuntimeException("Cannot delete region with null id.");
-        }
+        List<Region> regions = getAllRegionsInternal();
+
+        if (id == null) throw new RuntimeException("Cannot delete region with null id.");
+
+        regions.removeIf(r -> r.getId().equals(id));
+        writeRegionsIntoFile(regions);
     }
 
-    private List<Region> deleteFromListByID(List<Region> regions, Long id) {
-        if (!id.equals(regions.get(regions.size() - 1).getId())) {
-            regions.set(regions.indexOf(getById(id, regions)), regions.get(regions.size() - 1));
-        }
-        regions.remove(regions.size() - 1);
-        return regions;
-    }
-
-    private void saveAll(List<Region> regions) {
-        if (regions == null) {
+    private void writeRegionsIntoFile(List<Region> regions) {
+        if (regions == null) { // Хорошая ли это реализация?
             return;
         }
         try (BufferedWriter out = new BufferedWriter(new FileWriter(repositoryFileName), 32768)) {
@@ -116,17 +95,12 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
         }
     }
 
-    private long getCurrentMaxID(List<Region> regions) {
+    private long generateNextId(List<Region> regions) {
         if ((regions == null) || (regions.size() == 0)) {
-            return 0L;
+            return 1L;
         } else {
             Optional<Long> id = regions.stream().map(Region::getId).max(Long::compareTo);
-            if (id.isPresent()) {
-                return id.get();
-            } else {
-                throw new RuntimeException("Cannot define max id.");
-            }
+            return id.get() + 1;
         }
     }
-
 }

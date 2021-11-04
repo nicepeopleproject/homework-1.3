@@ -32,7 +32,7 @@ public class RegionController implements GenericController<Region, Long> {
 
     @Override
     public List<Region> getAll() {
-        return regionRepository.getAll();
+        return regionRepository.getAllRegions();
     }
 
     @Override
@@ -43,7 +43,7 @@ public class RegionController implements GenericController<Region, Long> {
 
     @Override
     public void deleteAll() {
-        for (Region region : regionRepository.getAll()) {
+        for (Region region : regionRepository.getAllRegions()) {
             regionRepository.deleteByID(region.getId());
         }
     }

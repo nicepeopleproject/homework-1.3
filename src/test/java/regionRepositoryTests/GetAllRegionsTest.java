@@ -7,7 +7,7 @@ import repository.RegionRepository;
 public class GetAllRegionsTest {
     public static void main(String[] args) {
         RegionRepository regionRepository = new JSONRegionRepositoryImpl();
-        for (Region region : regionRepository.getAll()) {
+        for (Region region : regionRepository.getAllRegions()) {
             System.out.println(region);
         }
     }
