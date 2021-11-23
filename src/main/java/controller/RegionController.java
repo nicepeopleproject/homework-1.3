@@ -6,45 +6,38 @@ import repository.RegionRepository;
 
 import java.util.List;
 
-public class RegionController implements GenericController<Region, Long> {
-    private RegionRepository regionRepository;
+public class RegionController {
+    private RegionRepository regionRepository = new JSONRegionRepositoryImpl();
 
-    {
-        regionRepository = new JSONRegionRepositoryImpl();
+    public Region createRegion(String regionName) {
+        return regionRepository.save(new Region(regionName));
     }
 
-    @Override
-    public void update(Region region) {
-        regionRepository.update(region);
-    }
-
-    @Override
-    public void changeNameById(Long id, String newName) {
+    public Region deleteRegion(Long id) {
         Region region = regionRepository.getById(id);
-        region.setName(newName);
-        regionRepository.update(region);
+        regionRepository.deleteByID(id);
+        return region;
     }
 
-    @Override
-    public Region getByID(Long id) {
+    public Region changeRegionNameById(Long id, String newName) {
+        Region region = new Region(newName);
+        region.setId(id);
+        return regionRepository.update(region);
+    }
+
+    public Region getById(Long id) {
         return regionRepository.getById(id);
     }
 
-    @Override
     public List<Region> getAll() {
-        return regionRepository.getAllRegions();
+        return regionRepository.getAll();
     }
 
-    @Override
-    public void deleteByID(Long id) {
-        regionRepository.deleteByID(id);
-
-    }
-
-    @Override
-    public void deleteAll() {
-        for (Region region : regionRepository.getAllRegions()) {
-            regionRepository.deleteByID(region.getId());
+    public Region update(Region region) {
+        if (regionRepository.getById(region.getId()) == null) {
+            return null;
+        } else {
+            return regionRepository.update(region);
         }
     }
 }

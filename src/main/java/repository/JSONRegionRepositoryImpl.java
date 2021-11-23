@@ -24,6 +24,7 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
         if (!Files.exists(Paths.get(this.repositoryFileName))) {
             try {
                 Files.createFile(Paths.get(this.repositoryFileName));
+                Files.write(Paths.get(repositoryFileName), "[]".getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -59,8 +60,18 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
     }
 
     @Override
-    public List<Region> getAllRegions() { // read
+    public List<Region> getAll() { // read
         return getAllRegionsInternal();
+    }
+
+    @Override
+    public void deleteByID(Long id) { // delete
+        List<Region> regions = getAllRegionsInternal();
+
+        if (id == null) throw new RuntimeException("Cannot delete region with null id.");
+
+        regions.removeIf(r -> r.getId().equals(id));
+        writeRegionsIntoFile(regions);
     }
 
     private List<Region> getAllRegionsInternal() {
@@ -74,18 +85,8 @@ public class JSONRegionRepositoryImpl implements RegionRepository {
         return new ArrayList<>();
     }
 
-    @Override
-    public void deleteByID(Long id) { // delete
-        List<Region> regions = getAllRegionsInternal();
-
-        if (id == null) throw new RuntimeException("Cannot delete region with null id.");
-
-        regions.removeIf(r -> r.getId().equals(id));
-        writeRegionsIntoFile(regions);
-    }
-
     private void writeRegionsIntoFile(List<Region> regions) {
-        if (regions == null) { // Хорошая ли это реализация?
+if (regions == null) { // Хорошая ли это реализация?
             return;
         }
         try (BufferedWriter out = new BufferedWriter(new FileWriter(repositoryFileName), 32768)) {
